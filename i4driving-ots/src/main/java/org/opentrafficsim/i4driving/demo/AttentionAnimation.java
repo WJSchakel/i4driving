@@ -92,7 +92,7 @@ public class AttentionAnimation extends OtsRenderable<ChannelAttention>
                 }
                 else if (channel instanceof OtsLocatable object)
                 {
-                    // find angle towards point, an place it at 45 degrees left or right according to the angle side
+                    // find angle towards point, and place it at 45 degrees left or right according to the angle side
                     Point2d point;
                     if (channel instanceof Conflict conflict)
                     {
