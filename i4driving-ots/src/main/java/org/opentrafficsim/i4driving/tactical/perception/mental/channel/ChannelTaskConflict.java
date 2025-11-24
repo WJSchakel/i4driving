@@ -251,6 +251,7 @@ public final class ChannelTaskConflict implements ChannelTask
                     if (next.getStartNode().equals(start))
                     {
                         // diverge
+                        nodes.add(start);
                         return;
                     }
                     upstreamLinks.add(next);
