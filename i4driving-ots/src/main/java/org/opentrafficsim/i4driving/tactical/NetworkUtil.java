@@ -41,6 +41,7 @@ public final class NetworkUtil
                 {
                     double fraction = lane.getCenterLine().projectFractional(link.getStartNode().getHeading(),
                             link.getEndNode().getHeading(), position.x, position.y, FractionalFallback.ENDPOINT);
+                    fraction = fraction < 0.0 ? 0.0 : (fraction > 1.0 ? 1.0 : fraction);
                     Point2d pointOnLane = lane.getCenterLine().getLocationFractionExtended(fraction);
                     double distance = pointOnLane.distance(position);
                     if (distance < minDistance)
