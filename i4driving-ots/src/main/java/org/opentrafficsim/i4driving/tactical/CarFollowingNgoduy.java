@@ -41,10 +41,7 @@ public class CarFollowingNgoduy implements CarFollowingModel
             "Number of leaders for spatial anticipation.", 3, NumericConstraint.ATLEASTONE);
 
     /** Base car-following model. */
-    private final CarFollowingModel baseModel;
-
-    /** Overruled desired speed. */
-    private Speed desiredSpeed;
+    final CarFollowingModel baseModel;
 
     /**
      * Constructor.
@@ -77,24 +74,7 @@ public class CarFollowingNgoduy implements CarFollowingModel
     @Override
     public Speed desiredSpeed(final Parameters parameters, final SpeedLimitInfo speedInfo) throws ParameterException
     {
-        return this.desiredSpeed == null ? this.baseModel.desiredSpeed(parameters, speedInfo) : this.desiredSpeed;
-    }
-    
-    /**
-     * Set desired speed.
-     * @param desiredSpeed desired speed
-     */
-    public void setDesiredSpeed(final Speed desiredSpeed)
-    {
-        this.desiredSpeed = desiredSpeed;
-    }
-    
-    /**
-     * Resets the desired speed.
-     */
-    public void resetDesiredSpeed()
-    {
-        this.desiredSpeed = null;
+        return this.baseModel.desiredSpeed(parameters, speedInfo);
     }
 
     @Override

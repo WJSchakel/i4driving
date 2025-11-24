@@ -463,32 +463,29 @@ public class ScenarioTacticalPlanner extends AbstractIncentivesTacticalPlanner i
     public void setDesiredSpeed(final Speed speed)
     {
         clearCache();
+        CarFollowingModel cfModel = getCarFollowingModel();
         if (getCarFollowingModel() instanceof CarFollowingNgoduy ngoduy)
         {
-            ngoduy.setDesiredSpeed(speed);
+            cfModel = ngoduy.baseModel;
         }
-        else
+        try
         {
-            try
-            {
-                Field modelField = AbstractCarFollowingModel.class.getDeclaredField("desiredSpeedModel");
-                modelField.setAccessible(true);
-                this.desiredSpeedModel = (DesiredSpeedModel) modelField.get(getCarFollowingModel());
-            }
-            catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e)
-            {
-                throw new RuntimeException(e);
-            }
-            setDesiredSpeedModel(new DesiredSpeedModel()
-            {
-                /** {@inheritDoc} */
-                @Override
-                public Speed desiredSpeed(final Parameters parameters, final SpeedLimitInfo speedInfo) throws ParameterException
-                {
-                    return speed;
-                }
-            });
+            Field modelField = AbstractCarFollowingModel.class.getDeclaredField("desiredSpeedModel");
+            modelField.setAccessible(true);
+            this.desiredSpeedModel = (DesiredSpeedModel) modelField.get(cfModel);
         }
+        catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e)
+        {
+            throw new RuntimeException(e);
+        }
+        setDesiredSpeedModel(cfModel, new DesiredSpeedModel()
+        {
+            @Override
+            public Speed desiredSpeed(final Parameters parameters, final SpeedLimitInfo speedInfo) throws ParameterException
+            {
+                return speed;
+            }
+        });
         interruptMove(getGtu().getLocation());
     }
 
@@ -498,16 +495,14 @@ public class ScenarioTacticalPlanner extends AbstractIncentivesTacticalPlanner i
     public void resetDesiredSpeed()
     {
         clearCache();
-        if (getCarFollowingModel() instanceof CarFollowingNgoduy ngoduy)
+        CarFollowingModel cfModel = getCarFollowingModel();
+        if (cfModel instanceof CarFollowingNgoduy ngoduy)
         {
-            ngoduy.resetDesiredSpeed();
+            cfModel = ngoduy.baseModel;
         }
-        else
-        {
-            Throw.when(this.desiredSpeedModel == null, IllegalStateException.class,
-                    "Attempting to reset desired speed, but no desired speed was ever set.");
-            setDesiredSpeedModel(this.desiredSpeedModel);
-        }
+        Throw.when(this.desiredSpeedModel == null, IllegalStateException.class,
+                "Attempting to reset desired speed, but no desired speed was ever set.");
+        setDesiredSpeedModel(cfModel, this.desiredSpeedModel);
         interruptMove(getGtu().getLocation());
     }
 
@@ -536,15 +531,16 @@ public class ScenarioTacticalPlanner extends AbstractIncentivesTacticalPlanner i
 
     /**
      * Sets the desired speed model in the car-following mode using reflection.
+     * @param cfModel car-following model
      * @param desiredSpeedModel desired speed model.
      */
-    private void setDesiredSpeedModel(final DesiredSpeedModel desiredSpeedModel)
+    private void setDesiredSpeedModel(final CarFollowingModel cfModel, final DesiredSpeedModel desiredSpeedModel)
     {
         try
         {
             Field field = AbstractCarFollowingModel.class.getDeclaredField("desiredSpeedModel");
             field.setAccessible(true);
-            field.set(getCarFollowingModel(), desiredSpeedModel);
+            field.set(cfModel, desiredSpeedModel);
         }
         catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e)
         {
