@@ -926,7 +926,11 @@ public class OtsTransceiver
                 {
                     return;
                 }
-                // TODO check that the GTU is not dead-reckoning as part of the hybrid mode
+                /*
+                 * When the GTU is in hybrid mode, it sends a plan every so often. ScenarioTacticalPlanner will schedule a
+                 * second move event at the same time that will trigger the dead-reckoning to continue until we receive new
+                 * dead-reckoning information.
+                 */
                 sendOperationalPlanMessage(gtuId);
             }
             else if (eventType.equals(Network.GTU_ADD_EVENT))
@@ -1070,8 +1074,8 @@ public class OtsTransceiver
             {
                 byte[] bytes = Sim0MQMessage.encodeUTF8(OtsTransceiver.this.bigEndian, OtsTransceiver.this.federation,
                         OtsTransceiver.this.ots, OtsTransceiver.this.client, "PLAN", this.messageId++, payload);
-                String log =
-                        String.format("[%.3fs] Ots sent PLAN message for GTU %s (a=%.3fm/s^2)", this.simulator.getSimulatorTime().si, gtuId, a[0]);
+                String log = String.format("[%.3fs] Ots sent PLAN message for GTU %s (a=%.3fm/s^2)",
+                        this.simulator.getSimulatorTime().si, gtuId, a[0]);
                 this.queue.add(new QueuedMessage(bytes, log));
             }
             catch (Sim0MQException | SerializationException ex)

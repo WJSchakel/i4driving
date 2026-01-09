@@ -271,6 +271,15 @@ public class ScenarioTacticalPlanner extends AbstractIncentivesTacticalPlanner i
                         LaneOperationalPlanBuilder.buildPlanFromSimplePlan(getGtu(), startTime, simplePlan, this.laneChange);
                 this.lastIntendedPlan = operationalPlan;
                 this.syncState = this.lmrsData.getSynchronizationState();
+                if (this.hybrid)
+                {
+                    /*
+                     * In hybrid mode we want to return this plan so it is sent by a listener to LANEBASED_MOVE_EVENT. But we do
+                     * not actually want to move based on this. Therefore we schedule another interrupt at this time. As the
+                     * value of lastDeadReckoningModelExecution is updated, this second move will only do dead-reckoning.
+                     */
+                    getGtu().getSimulator().scheduleEventNow(() -> interruptMove(locationAtStartTime));
+                }
                 return operationalPlan;
             }
         }
