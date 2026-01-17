@@ -79,7 +79,6 @@ public class OpenDriveSimulation implements Sim0mqSimulation
         tacticalFactory.setStream(stream);
         // LaneBasedTacticalPlannerFactory<?> tacticalFactory = mixinModel.getTacticalPlanner(stream);
         this.parameterFactory = new ParameterFactorySim0mq();
-        this.parameterFactory.addParameter(DefaultsNl.CAR, LmrsParameters.VGAIN, new Speed(35.0, SpeedUnit.KM_PER_HOUR));
 
         // GTU characteristics generator
         GtuType.registerTemplateSupplier(DefaultsNl.CAR, Defaults.NL);
