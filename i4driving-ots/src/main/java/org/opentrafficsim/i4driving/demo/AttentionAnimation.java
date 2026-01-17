@@ -39,8 +39,11 @@ public class AttentionAnimation extends OtsRenderable<ChannelAttention>
     /** Maximum radius of attention circles. */
     private static final double MAX_RADIUS = 1.5;
 
-    /** Radius around GTU along which the attention circles are placed. */
-    private static final double CENTER_RADIUS = 4.5;
+    /** Radius around GTU along which the regular attention circles are placed. */
+    private static final double CENTER_RADIUS = 3.0; // 4.5
+
+    /** Radius around GTU along which the attention circles of objects are placed. */
+    private static final double CENTER_RADIUS_OBJECTS = 6.0;
 
     /** Line width around circle. */
     private static final float LINE_WIDTH = 0.15f;
@@ -74,6 +77,7 @@ public class AttentionAnimation extends OtsRenderable<ChannelAttention>
                 double attention = mental.getAttention(channel);
                 Duration perceptionDelay = mental.getPerceptionDelay(channel);
                 double angle;
+                double radius = CENTER_RADIUS;
                 if (ChannelTask.LEFT.equals(channel))
                 {
                     angle = Math.PI / 2.0;
@@ -92,64 +96,75 @@ public class AttentionAnimation extends OtsRenderable<ChannelAttention>
                 }
                 else if (channel instanceof OtsLocatable object)
                 {
-                    // find angle towards point, and place it at 45 degrees left or right according to the angle side
                     Point2d point;
                     if (channel instanceof Conflict conflict)
                     {
-                        // on a conflict we take a point 10m upstream
-                        double ddx = 10.0 * Math.cos(conflict.getOtherConflict().getLocation().dirZ);
-                        double ddy = 10.0 * Math.sin(conflict.getOtherConflict().getLocation().dirZ);
-                        point = conflict.getOtherConflict().getLocation().translate(-ddx, -ddy);
+                        // on a conflict we take a point 25m upstream, or the upstream conflicting node if closer
+                        double x = conflict.getOtherConflict().getLongitudinalPosition().si - 25.0;
+                        point = conflict.getOtherConflict().getLane().getCenterLine().getLocationExtendedSI(x < 0.0 ? 0.0 : x);
                     }
                     else
                     {
                         point = object.getLocation();
                     }
-                    if (AngleUtil.normalizeAroundZero(gtu.getLocation().directionTo(point) - gtu.getLocation().dirZ) > 0.0)
-                    {
-                        angle = Math.PI / 4.0;
-                    }
-                    else
-                    {
-                        angle = -Math.PI / 4.0;
-                    }
+                    angle = AngleUtil.normalizeAroundZero(gtu.getLocation().directionTo(point) - gtu.getLocation().dirZ);
+                    radius = CENTER_RADIUS_OBJECTS;
                 }
                 else
                 {
                     continue;
                 }
-                graphics.setTransform(transform);
-                // center point is not correct in OTS 1.7.5
-                graphics.translate(.5 * (gtu.getFront().dx().si + gtu.getRear().dx().si), 0.0);
-                graphics.rotate(-angle, 0.0, 0.0);
-
-                // connecting line
-                graphics.setColor(Color.GRAY);
-                graphics.draw(new Line2D.Double(0.0, 0.0, CENTER_RADIUS - MAX_RADIUS - LINE_WIDTH, 0.0));
-
-                // transparent background fill
-                Color color = SCALE.getPaint(Math.min(1.0, perceptionDelay.si));
-                graphics.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 48));
-                graphics.fill(
-                        new Ellipse2D.Double(CENTER_RADIUS - MAX_RADIUS, -MAX_RADIUS, 2.0 * MAX_RADIUS, 2.0 * MAX_RADIUS));
-
-                // non-transparent attention fill
-                graphics.setColor(color);
-                double r = Math.sqrt(attention);
-                graphics.fill(new Ellipse2D.Double(CENTER_RADIUS - r * MAX_RADIUS, -r * MAX_RADIUS, 2.0 * r * MAX_RADIUS,
-                        2.0 * r * MAX_RADIUS));
-
-                // edge of circle
-                graphics.setColor(Color.GRAY);
-                float lineWidth = LINE_WIDTH - 0.02f; // prevent tiny edges between fill and border
-                graphics.draw(new Ellipse2D.Double(CENTER_RADIUS - MAX_RADIUS - .5 * lineWidth, -MAX_RADIUS - .5 * lineWidth,
-                        2.0 * MAX_RADIUS + lineWidth, 2.0 * MAX_RADIUS + lineWidth));
+                drawAttentionCircle(graphics, gtu, transform, attention, perceptionDelay, angle, radius);
             }
             graphics.setTransform(transform);
         }
 
     }
 
+    /**
+     * Draws attention circle.
+     * @param graphics graphics
+     * @param gtu GTU
+     * @param transform base transform
+     * @param attention attention level
+     * @param perceptionDelay perception delay
+     * @param angle angle to draw circle at relative to GTU
+     * @param radius center circle radius around GTU
+     */
+    private void drawAttentionCircle(final Graphics2D graphics, final LaneBasedGtu gtu, final AffineTransform transform,
+            final double attention, final Duration perceptionDelay, final double angle, final double radius)
+    {
+        graphics.setTransform(transform);
+        
+        // center point is not correct in OTS 1.7.5
+        graphics.translate(.5 * (gtu.getFront().dx().si + gtu.getRear().dx().si), 0.0);
+        graphics.rotate(-angle, 0.0, 0.0);
+
+        // connecting line
+        graphics.setColor(Color.GRAY);
+        graphics.draw(new Line2D.Double(0.0, 0.0, radius - MAX_RADIUS - LINE_WIDTH, 0.0));
+
+        // transparent background fill
+        Color color = SCALE.getPaint(Math.min(1.0, perceptionDelay.si));
+        graphics.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 48));
+        graphics.fill(new Ellipse2D.Double(radius - MAX_RADIUS, -MAX_RADIUS, 2.0 * MAX_RADIUS, 2.0 * MAX_RADIUS));
+
+        // non-transparent attention fill
+        graphics.setColor(color);
+        double r = Math.sqrt(attention);
+        graphics.fill(
+                new Ellipse2D.Double(radius - r * MAX_RADIUS, -r * MAX_RADIUS, 2.0 * r * MAX_RADIUS, 2.0 * r * MAX_RADIUS));
+
+        // edge of circle
+        graphics.setColor(Color.GRAY);
+        float lineWidth = LINE_WIDTH - 0.02f; // prevent tiny edges between fill and border
+        graphics.draw(new Ellipse2D.Double(radius - MAX_RADIUS - .5 * lineWidth, -MAX_RADIUS - .5 * lineWidth,
+                2.0 * MAX_RADIUS + lineWidth, 2.0 * MAX_RADIUS + lineWidth));
+    }
+
+    /**
+     * Locatable for GTU in attention context.
+     */
     public static class ChannelAttention implements OtsLocatable
     {
         /** GTU. */

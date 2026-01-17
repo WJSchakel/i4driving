@@ -2,7 +2,7 @@ package org.opentrafficsim.i4driving.sim0mq;
 
 import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.scalar.Speed;
-import org.djutils.draw.point.OrientedPoint2d;
+import org.djutils.draw.point.Point2d;
 import org.djutils.multikeymap.MultiKeyMap;
 import org.opentrafficsim.core.geometry.OtsGeometryException;
 import org.opentrafficsim.core.gtu.GtuCharacteristics;
@@ -35,7 +35,7 @@ public class GtuSpawnerOd
     private final LaneBasedGtuCharacteristicsGeneratorOd characteristicsGenerator;
 
     /** Categorization based on GTU type and route, i.e. VEHICLE message. */
-    private final Categorization categorization = new Categorization("SpanwCategorization", GtuType.class, Route.class);
+    private final Categorization categorization = new Categorization("SpawnCategorization", GtuType.class, Route.class);
 
     /** Stored categories. */
     private final MultiKeyMap<Category> categories = new MultiKeyMap<>(GtuType.class, Route.class);
@@ -62,7 +62,7 @@ public class GtuSpawnerOd
      */
     @SuppressWarnings("parameternumber")
     public void spawnGtu(final String id, final GtuType gtuType, final Length length, final Length width, final Length front,
-            final Route route, final Speed speed, final OrientedPoint2d position)
+            final Route route, final Speed speed, final Point2d position)
             throws GtuException, OtsGeometryException, NetworkException
     {
         LaneBasedGtuCharacteristics standardTemplate =

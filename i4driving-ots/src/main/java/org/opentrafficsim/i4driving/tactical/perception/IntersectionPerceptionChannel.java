@@ -17,6 +17,7 @@ import org.opentrafficsim.core.gtu.perception.AbstractPerceptionCategory;
 import org.opentrafficsim.core.network.LateralDirectionality;
 import org.opentrafficsim.core.network.NetworkException;
 import org.opentrafficsim.core.network.route.Route;
+import org.opentrafficsim.i4driving.tactical.VisibilityLanePerception;
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelMental;
 import org.opentrafficsim.road.gtu.lane.LaneBasedGtu;
 import org.opentrafficsim.road.gtu.lane.perception.AbstractPerceptionReiterable;
@@ -216,7 +217,15 @@ public class IntersectionPerceptionChannel extends AbstractPerceptionCategory<La
 
                 // TODO get from link combination (needs to be a map property on the links)
                 Length lookAhead = Try.assign(() -> getGtu().getParameters().getParameter(LOOKAHEAD), "Parameter not present.");
-                Length conflictingVisibility = lookAhead;
+                Length conflictingVisibility;
+                if (perceivingGtu.getTacticalPlanner().getPerception() instanceof VisibilityLanePerception vis)
+                {
+                    conflictingVisibility = Length.min(lookAhead, vis.getVisibility(perceivingGtu, otherConflict));
+                }
+                else
+                {
+                    conflictingVisibility = lookAhead;
+                }
                 Speed conflictingSpeedLimit;
                 try
                 {
@@ -238,7 +247,7 @@ public class IntersectionPerceptionChannel extends AbstractPerceptionCategory<La
                     PerceptionCollectable<HeadwayGtu, LaneBasedGtu> upstreamConflictingGTUs =
                             otherConflict.getUpstreamGtus(getGtu(), headwayGtuType, conflictingVisibility);
                     PerceptionCollectable<HeadwayGtu, LaneBasedGtu> downstreamConflictingGTUs =
-                            otherConflict.getDownstreamGtus(getGtu(), headwayGtuType, conflictingVisibility);
+                            otherConflict.getDownstreamGtus(getGtu(), headwayGtuType, lookAhead);
                     // TODO stop lines (current models happen not to use this, but should be possible)
                     HeadwayStopLine stopLine = new HeadwayStopLine("stopLineId", Length.ZERO, conflict.getLane());
                     HeadwayStopLine conflictingStopLine =

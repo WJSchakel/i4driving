@@ -23,6 +23,7 @@ import org.opentrafficsim.core.gtu.perception.DirectEgoPerception;
 import org.opentrafficsim.core.gtu.plan.operational.OperationalPlan;
 import org.opentrafficsim.core.units.distributions.ContinuousDistSpeed;
 import org.opentrafficsim.i4driving.demo.AccelerationConflictsTmp;
+import org.opentrafficsim.i4driving.tactical.VisibilityLanePerception.Visibility;
 import org.opentrafficsim.i4driving.tactical.perception.ActiveModePerception;
 import org.opentrafficsim.i4driving.tactical.perception.AdaptationHeadwayChannel;
 import org.opentrafficsim.i4driving.tactical.perception.AdaptationSpeedChannel;
@@ -44,6 +45,7 @@ import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTa
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskCarFollowing;
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskConflict;
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskCooperation;
+import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskIntersection;
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskLaneChange;
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskLocalDistraction;
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskScan;
@@ -52,7 +54,6 @@ import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTa
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ConflictUtilTmp;
 import org.opentrafficsim.road.gtu.lane.CollisionException;
 import org.opentrafficsim.road.gtu.lane.LaneBasedGtu;
-import org.opentrafficsim.road.gtu.lane.perception.CategoricalLanePerception;
 import org.opentrafficsim.road.gtu.lane.perception.LanePerception;
 import org.opentrafficsim.road.gtu.lane.perception.categories.AnticipationTrafficPerception;
 import org.opentrafficsim.road.gtu.lane.perception.categories.DirectInfrastructurePerception;
@@ -189,6 +190,11 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
     @Option(names = {"--conflictsTask"}, description = "Enables conflict task.", defaultValue = "true", negatable = true)
     private boolean conflictsTask = true;
 
+    /** Conflict model. */
+    @Option(names = {"--conflictsInfra"}, description = "Selects infra-based conflict task.", defaultValue = "false",
+            negatable = true)
+    private boolean conflictsInfra = false;
+
     // Adaptations
 
     /** Behavioral adaptation of speed. */
@@ -235,8 +241,8 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
 
     /** Fraction of drivers overestimation as perception errors. */
     @Option(names = {"--fractionOverEstimation"},
-            description = "Fraction of drivers over-estimating speed and distance [0..1].", defaultValue = "0.0")
-    private double fractionOverEstimation = 0.0;
+            description = "Fraction of drivers over-estimating speed and distance [0..1].", defaultValue = "1.0")
+    private double fractionOverEstimation = 1.0;
 
     // Localized features
 
@@ -270,6 +276,9 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
         }
     };
 
+    /** Visibility. */
+    private Visibility visibility;
+
     /**
      * Sets the random number stream.
      * @param stream random number stream
@@ -293,7 +302,7 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
     }
 
     /**
-     * Resets the factory to the state when {@code setResetState()} was called.
+     * Resets the factory to the state when {@code setSingleShotMode()} was called.
      */
     public void resetMode()
     {
@@ -371,6 +380,7 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
             if (this.fullerImplementation.equals(FullerImplementation.ATTENTION_MATRIX))
             {
                 // Attention matrix
+                parameters.setDefaultParameter(Fuller.TS_CRIT);
                 parameters.setDefaultParameters(ChannelFuller.class);
                 parameters.setDefaultParameters(ChannelMental.class);
                 if (this.updateTimeAdaptation)
@@ -399,7 +409,16 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
             }
             if (this.trafficLightsTask || this.conflictsTask)
             {
-                parameters.setDefaultParameter(ChannelTaskConflict.HEGO);
+                if (this.conflictsInfra)
+                {
+                    parameters.setDefaultParameter(ChannelTaskIntersection.TD_EGO);
+                    parameters.setDefaultParameter(ChannelTaskIntersection.XEGO);
+                    parameters.setDefaultParameter(ChannelTaskIntersection.TD_OTH);
+                }
+                else
+                {
+                    parameters.setDefaultParameter(ChannelTaskConflict.HEGO);
+                }
                 parameters.setDefaultParameter(ChannelTaskConflict.HCONF);
             }
             if (this.signalTask)
@@ -515,7 +534,8 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
             addTask(taskSuppliers, this.signalTask, ChannelTaskSignal.SUPPLIER);
             addTask(taskSuppliers, this.laneChangingTask, ChannelTaskLaneChange.SUPPLIER);
             addTask(taskSuppliers, this.cooperationTask, ChannelTaskCooperation.SUPPLIER);
-            addTask(taskSuppliers, this.conflictsTask, ChannelTaskConflict.SUPPLIER);
+            addTask(taskSuppliers, this.conflictsTask,
+                    this.conflictsInfra ? ChannelTaskIntersection.SUPPLIER : ChannelTaskConflict.SUPPLIER);
             addTask(taskSuppliers, this.activeMode, ChannelTaskActiveModeCrossing.SUPPLIER);
             addTask(taskSuppliers, this.localDistraction, ChannelTaskLocalDistraction.SUPPLIER);
             addTask(taskSuppliers, true, ChannelTaskScan.SUPPLIER);
@@ -598,7 +618,7 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
             anticipationConflicts = new ConflictAnticipation();
         }
 
-        LanePerception perception = new CategoricalLanePerception(gtu, mental);
+        LanePerception perception = new VisibilityLanePerception(gtu, mental, this.visibility);
         perception.addPerceptionCategory(new DirectEgoPerception<>(perception));
         perception.addPerceptionCategory(new DirectInfrastructurePerception(perception));
         perception.addPerceptionCategory(new AnticipationTrafficPerception(perception));
@@ -751,6 +771,16 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
     }
 
     /**
+     * Sets the conflicts task demand model infra-based or not.
+     * @param conflictsInfra conflicts task demand model infra-based or not
+     */
+    public void setConflictsInfra(final boolean conflictsInfra)
+    {
+        saveState("conflictsInfra");
+        this.conflictsInfra = conflictsInfra;
+    }
+
+    /**
      * Enables/disables behavioral adaptation of speed.
      * @param speedAdaptation behavioral adaptation of speed
      */
@@ -865,6 +895,15 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
     {
         saveState("localDistraction");
         this.localDistraction = localDistraction;
+    }
+
+    /**
+     * Set visibility.
+     * @param visibility
+     */
+    public void setVisibility(final Visibility visibility)
+    {
+        this.visibility = visibility;
     }
 
     /**
