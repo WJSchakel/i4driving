@@ -5,6 +5,7 @@ import java.util.function.Function;
 
 import org.opentrafficsim.base.parameters.ParameterException;
 import org.opentrafficsim.base.parameters.ParameterTypeDouble;
+import org.opentrafficsim.base.parameters.constraint.DualBound;
 import org.opentrafficsim.i4driving.Stateless;
 import org.opentrafficsim.road.gtu.lane.perception.LanePerception;
 import org.opentrafficsim.road.gtu.lane.tactical.util.lmrs.LmrsParameters;
@@ -23,6 +24,10 @@ public final class ChannelTaskLaneChange implements ChannelTask
 
     /** Current right lane change desire. */
     private static final ParameterTypeDouble DRIGHT = LmrsParameters.DRIGHT;
+
+    /** Scaling on lane change desire for lane change task demand. */
+    public static final ParameterTypeDouble TD_D = new ParameterTypeDouble("td_d",
+            "Scaling on lane change desire for lane change task demand.", 1.0, DualBound.UNITINTERVAL);
 
     /** Standard set of left and right lane-change task. */
     private static final Set<ChannelTask> SET = Set.of(new ChannelTaskLaneChange(true), new ChannelTaskLaneChange(false));
@@ -62,10 +67,12 @@ public final class ChannelTaskLaneChange implements ChannelTask
     {
         try
         {
+            double td = perception.getGtu().getParameters().contains(TD_D)
+                    ? perception.getGtu().getParameters().getParameter(TD_D) : TD_D.getDefaultValue();
             double dLeft = perception.getGtu().getParameters().getParameter(DLEFT);
             double dRight = perception.getGtu().getParameters().getParameter(DRIGHT);
-            return Math.min(0.999, this.left ? (dLeft >= dRight && dLeft > 0.0 ? dLeft : 0.0)
-                    : (dRight >= dLeft && dRight > 0.0 ? dRight : 0.0));
+            return Math.min(0.999, td * (this.left ? td * (dLeft >= dRight && dLeft > 0.0 ? dLeft : 0.0)
+                    : (dRight >= dLeft && dRight > 0.0 ? dRight : 0.0)));
         }
         catch (ParameterException ex)
         {

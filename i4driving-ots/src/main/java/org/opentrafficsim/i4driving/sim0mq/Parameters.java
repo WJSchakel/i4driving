@@ -16,12 +16,14 @@ import org.opentrafficsim.i4driving.tactical.perception.mental.CarFollowingTask;
 import org.opentrafficsim.i4driving.tactical.perception.mental.TaskManagerAr;
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelFuller;
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskConflict;
+import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskLaneChange;
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskScan;
 import org.opentrafficsim.i4driving.tactical.perception.mental.channel.ChannelTaskSignal;
 import org.opentrafficsim.road.gtu.lane.perception.mental.AdaptationHeadway;
 import org.opentrafficsim.road.gtu.lane.perception.mental.AdaptationSituationalAwareness;
 import org.opentrafficsim.road.gtu.lane.perception.mental.AdaptationSpeed;
 import org.opentrafficsim.road.gtu.lane.perception.mental.Fuller;
+import org.opentrafficsim.road.gtu.lane.tactical.following.AbstractIdm;
 import org.opentrafficsim.road.gtu.lane.tactical.util.lmrs.LmrsParameters;
 
 /**
@@ -82,6 +84,7 @@ public final class Parameters
     {
         add(ParameterTypes.class);
         MAP.put("x0", ParameterTypes.LOOKAHEAD);
+        add(AbstractIdm.class);
         add(LmrsParameters.class);
         add(Fuller.class);
         add(TaskManagerAr.class);
@@ -94,6 +97,7 @@ public final class Parameters
         add(ChannelTaskScan.class);
         add(ChannelTaskSignal.class);
         add(ChannelTaskConflict.class);
+        add(ChannelTaskLaneChange.class);
         add(IdmModified.class);
         add(CarFollowingNgoduy.class);
         // remove status variables and old parameters

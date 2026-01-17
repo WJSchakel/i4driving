@@ -39,6 +39,9 @@ public class ChannelFuller implements ChannelMental
     /** Task saturation. */
     public static final ParameterTypeDouble TS = Fuller.TS;
 
+    /** Critical task saturation. */
+    public static final ParameterTypeDouble TS_CRIT = Fuller.TS_CRIT;
+
     /** Erroneous estimation factor on distance and speed difference. */
     public static final ParameterTypeDouble EST_FACTOR = new ParameterTypeDouble("f_est",
             "Erroneous estimation factor on distance and speed difference.", 1.0, NumericConstraint.POSITIVE);
@@ -162,8 +165,10 @@ public class ChannelFuller implements ChannelMental
 
         // Calculate task saturation, perception errors, and apply behavioral adaptations
         double ts = sumTaskDemand / tc;
+        double deltaCrit = parameters.contains(TS_CRIT) ? 1.0 - parameters.getParameter(TS_CRIT) : 0.0;
         parameters.setParameter(TS, ts);
-        parameters.setParameter(EST_FACTOR, Math.pow(Math.max(ts, 1.0), parameters.getParameter(Estimation.OVER_EST)));
+        parameters.setParameter(EST_FACTOR,
+                Math.pow(Math.max(ts + deltaCrit, 1.0), parameters.getParameter(Estimation.OVER_EST)));
         parameters.setParameter(ATT, maxAttention);
         for (BehavioralAdaptation behavioralAdapatation : this.behavioralAdapatations)
         {
