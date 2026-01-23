@@ -233,7 +233,9 @@ public class CarFollowingScenario extends AbstractSimulationScript
                         columnFor(AdaptationSpeed.BETA_V0),
                         // columnFor(CarFollowingTask.HEXP),columnFor(ChannelTaskLaneChange.TD_D),
                         // columnFor(ChannelTaskSignal.TDSIGNAL),columnFor(ChannelTaskScan.TDSCAN),
-                        columnFor(Fuller.TC), columnFor(Fuller.TS_CRIT), columnFor(ParameterTypes.LOOKAHEAD),
+                        columnFor(Fuller.TC), columnFor(Fuller.TS_CRIT),
+                        new Column<>("x0", ParameterTypes.LOOKAHEAD.getDescription(), ParameterTypes.LOOKAHEAD.getValueClass(),
+                                ParameterTypes.LOOKAHEAD.getDefaultValue().getDisplayUnit().getStandardUnit().getId()),
                         columnFor(ParameterTypes.T0), columnFor(ChannelFuller.TAU_MIN), columnFor(ChannelFuller.TAU_MAX),
                         columnFor(ParameterTypes.VCONG)));
         statistics.values().forEach((s) -> s.forEach((m) -> table.addRowByColumnIds(m)));
@@ -459,7 +461,10 @@ public class CarFollowingScenario extends AbstractSimulationScript
                     tauMin_back = Double.valueOf(valueString);
                     break;
                 case "x0_front":
-                    setParameter(ParameterTypes.LOOKAHEAD, Length.valueOf(valueString + "m"));
+                    // ParameterTypes.LOOKAHEAD has id "Look-ahead" but we need "x0", hence do this not by setParameter()
+                    Length value = Length.valueOf(valueString + "m");
+                    this.tableValues.put("x0", value);
+                    this.parameterFactory.setParameterValue(ParameterTypes.LOOKAHEAD, value);
                     break;
                 case "t0":
                     setParameter(ParameterTypes.T0, Duration.valueOf(valueString + "s"));
@@ -636,7 +641,7 @@ public class CarFollowingScenario extends AbstractSimulationScript
          * Compare individual value
          * @param <T> value type
          * @param t value of this Statistic
-         * @param o value of other Statistic 
+         * @param o value of other Statistic
          * @return
          */
         private <T> int compare(Comparable<T> t, T o)
