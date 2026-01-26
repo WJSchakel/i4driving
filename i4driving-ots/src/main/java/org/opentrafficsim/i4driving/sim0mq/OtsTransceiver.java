@@ -567,24 +567,32 @@ public class OtsTransceiver
                             if (method.getParameterTypes()[0].equals(boolean.class))
                             {
                                 method.invoke(OtsTransceiver.this.tacticalFactory, (boolean) value);
+                                CategoryLogger.always()
+                                        .debug("Setting " + parameter + " set as " + value + " for vehicle " + id + ".");
                             }
                             else if (method.getParameterTypes()[0].equals(int.class))
                             {
                                 method.invoke(OtsTransceiver.this.tacticalFactory, (int) value);
+                                CategoryLogger.always()
+                                        .debug("Setting " + parameter + " set as " + value + " for vehicle " + id + ".");
                             }
                             else if (method.getParameterTypes()[0].equals(double.class))
                             {
                                 method.invoke(OtsTransceiver.this.tacticalFactory, (double) value);
+                                CategoryLogger.always()
+                                        .debug("Setting " + parameter + " set as " + value + " for vehicle " + id + ".");
                             }
                             else if (method.getParameterTypes()[0].isEnum())
                             {
                                 @SuppressWarnings("unchecked")
                                 Class<T> clazz = (Class<T>) method.getParameterTypes()[0];
                                 method.invoke(OtsTransceiver.this.tacticalFactory, Enum.valueOf(clazz, (String) value));
+                                CategoryLogger.always()
+                                        .debug("Setting " + parameter + " set as " + value + " for vehicle " + id + ".");
                             }
                             else
                             {
-                                CategoryLogger.always().warn("Unable to set parameter " + parameter);
+                                CategoryLogger.always().warn("Unable to set setting " + parameter + " for vehicle " + id + ".");
                                 break;
                             }
                         }
@@ -592,7 +600,7 @@ public class OtsTransceiver
                 }
                 else
                 {
-                    setParameterValue(parameter, value, setParameters);
+                    setParameterValue(parameter, value, setParameters, id);
                 }
             }
             /*-
@@ -648,13 +656,16 @@ public class OtsTransceiver
          * @param parameter parameter type id
          * @param value value
          * @param setParameters set of parameters that are set, to which the parameter should be added
+         * @param vehicle id
          */
         @SuppressWarnings("unchecked")
         private <T> void setParameterValue(final String parameter, final Object value,
-                final Set<ParameterType<?>> setParameters)
+                final Set<ParameterType<?>> setParameters, final String id)
         {
             ParameterType<T> param = (ParameterType<T>) Parameters.get(parameter);
             this.parameterFactory.setParameterValue(param, (T) value);
+            CategoryLogger.always().info("Parameter " + param.getId() + " set in the parameter factory to value " + value
+                    + " for vehicle " + id + ".");
             setParameters.add(param);
         }
 
