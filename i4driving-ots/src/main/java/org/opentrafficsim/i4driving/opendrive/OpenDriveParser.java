@@ -82,6 +82,8 @@ import org.opentrafficsim.road.network.lane.LaneType;
 import org.opentrafficsim.road.network.lane.Shoulder;
 import org.opentrafficsim.road.network.lane.Stripe;
 import org.opentrafficsim.road.network.lane.changing.LaneKeepingPolicy;
+import org.opentrafficsim.road.network.lane.conflict.ConflictBuilder;
+import org.opentrafficsim.road.network.lane.conflict.ConflictBuilder.RelativeWidthGenerator;
 import org.opentrafficsim.road.network.lane.object.detector.SinkDetector;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
@@ -513,6 +515,8 @@ public final class OpenDriveParser
                 this.origins.computeIfAbsent(odRoadIdentifier(road), (s) -> new LinkedHashMap<>()).put(false, endNodeBackward);
             }
         }
+        
+        ConflictBuilder.buildConflicts(this.net, this.net.getSimulator(), new RelativeWidthGenerator(0.8));
     }
 
     /**
