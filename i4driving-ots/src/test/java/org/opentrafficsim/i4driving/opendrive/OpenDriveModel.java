@@ -74,6 +74,7 @@ public class OpenDriveModel extends AbstractOtsModel
             OpenDriveParser parser = OpenDriveParser.parseStream(stream);
             this.network = new RoadNetwork("roadNetwork", getSimulator());
             parser.build(this.network);
+            OpenDriveParser.buildConflicts(this.network);
             if (getSimulator() instanceof OtsAnimator)
             {
                 DefaultAnimationFactory.animateXmlNetwork(this.network, COLORER);

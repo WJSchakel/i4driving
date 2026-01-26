@@ -6,8 +6,6 @@ import java.util.Map;
 import javax.xml.bind.JAXBException;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.djunits.unit.SpeedUnit;
-import org.djunits.value.vdouble.scalar.Speed;
 import org.opentrafficsim.core.definitions.Defaults;
 import org.opentrafficsim.core.definitions.DefaultsNl;
 import org.opentrafficsim.core.dsol.OtsSimulatorInterface;
@@ -23,7 +21,6 @@ import org.opentrafficsim.i4driving.tactical.ScenarioTacticalPlannerFactory;
 import org.opentrafficsim.road.gtu.generator.characteristics.LaneBasedGtuCharacteristics;
 import org.opentrafficsim.road.gtu.generator.characteristics.LaneBasedGtuCharacteristicsGeneratorOd;
 import org.opentrafficsim.road.gtu.lane.VehicleModel;
-import org.opentrafficsim.road.gtu.lane.tactical.util.lmrs.LmrsParameters;
 import org.opentrafficsim.road.gtu.strategical.LaneBasedStrategicalRoutePlannerFactory;
 import org.opentrafficsim.road.network.RoadNetwork;
 import org.opentrafficsim.road.od.Category;
@@ -73,6 +70,7 @@ public class OpenDriveSimulation implements Sim0mqSimulation
         this.parser = OpenDriveParser.parseFileString(networkString).setUseRoadName(useRoadName);
         this.network = new RoadNetwork("OtsOpenDriveNetwork", simulator);
         this.parser.build(this.network);
+        OpenDriveParser.buildConflicts(this.network);
 
         // Model
         StreamInterface stream = simulator.getModel().getStream("generation");

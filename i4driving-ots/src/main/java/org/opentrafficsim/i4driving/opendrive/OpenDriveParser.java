@@ -34,12 +34,15 @@ import javax.xml.transform.sax.SAXSource;
 
 import org.djunits.value.vdouble.scalar.Length;
 import org.djunits.value.vdouble.scalar.Speed;
+import org.djutils.draw.DrawRuntimeException;
 import org.djutils.draw.line.PolyLine2d;
 import org.djutils.draw.line.Polygon2d;
 import org.djutils.draw.line.Ray2d;
 import org.djutils.draw.point.OrientedPoint2d;
 import org.djutils.draw.point.Point2d;
 import org.djutils.exceptions.Try;
+import org.djutils.immutablecollections.ImmutableMap;
+import org.djutils.logger.CategoryLogger;
 import org.opentrafficsim.core.definitions.DefaultsNl;
 import org.opentrafficsim.core.geometry.ContinuousPolyLine;
 import org.opentrafficsim.core.geometry.Flattener;
@@ -74,6 +77,7 @@ import org.opentrafficsim.i4driving.opendrive.generated.TRoadLinkPredecessorSucc
 import org.opentrafficsim.i4driving.opendrive.generated.TRoadType;
 import org.opentrafficsim.road.definitions.DefaultsRoadNl;
 import org.opentrafficsim.road.network.RoadNetwork;
+import org.opentrafficsim.road.network.lane.CrossSectionElement;
 import org.opentrafficsim.road.network.lane.CrossSectionLink;
 import org.opentrafficsim.road.network.lane.CrossSectionSlice;
 import org.opentrafficsim.road.network.lane.Lane;
@@ -83,7 +87,7 @@ import org.opentrafficsim.road.network.lane.Shoulder;
 import org.opentrafficsim.road.network.lane.Stripe;
 import org.opentrafficsim.road.network.lane.changing.LaneKeepingPolicy;
 import org.opentrafficsim.road.network.lane.conflict.ConflictBuilder;
-import org.opentrafficsim.road.network.lane.conflict.ConflictBuilder.RelativeWidthGenerator;
+import org.opentrafficsim.road.network.lane.conflict.ConflictBuilder.FixedWidthGenerator;
 import org.opentrafficsim.road.network.lane.object.detector.SinkDetector;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
@@ -515,8 +519,7 @@ public final class OpenDriveParser
                 this.origins.computeIfAbsent(odRoadIdentifier(road), (s) -> new LinkedHashMap<>()).put(false, endNodeBackward);
             }
         }
-        
-        ConflictBuilder.buildConflicts(this.net, this.net.getSimulator(), new RelativeWidthGenerator(0.8));
+
     }
 
     /**
@@ -862,6 +865,80 @@ public final class OpenDriveParser
         points.addAll(line2.reverse().getPointList());
         removePointsOnStraight(points);
         return new Polygon2d(points);
+    }
+
+    /**
+     * Build conflicts while dealing with possible DrawRuntimeException due to duplicate points on inside curve.
+     * @throws OtsGeometryException
+     */
+    public static void buildConflicts(final RoadNetwork network) throws OtsGeometryException
+    {
+        List<Lane> lanes = getLanes(network);
+        for (int i = 0; i < lanes.size(); i++)
+        {
+            for (int j = i + 1; j < lanes.size(); j++)
+            {
+                double width = -1.0;
+                try
+                {
+                    if (width < 0.0)
+                    {
+                        ConflictBuilder.buildConflicts(lanes.get(i), lanes.get(j), network.getSimulator(),
+                                ConflictBuilder.DEFAULT_WIDTH_GENERATOR);
+                    }
+                    else
+                    {
+                        ConflictBuilder.buildConflicts(lanes.get(i), lanes.get(j), network.getSimulator(),
+                                new FixedWidthGenerator(Length.instantiateSI(width)));
+                    }
+                }
+                catch (DrawRuntimeException ex)
+                {
+                    if (width < 0.0)
+                    {
+                        width = 0.8 * Math.min(lanes.get(i).getWidth(0.5).si, lanes.get(j).getWidth(0.5).si);
+                    }
+                    else
+                    {
+                        width -= 0.1;
+                        if (width < 0.0)
+                        {
+                            CategoryLogger.always().warn("Unable to create conflict between lanes " + lanes.get(i).getFullId()
+                                    + " and " + lanes.get(j).getFullId());
+                            continue;
+                        }
+                    }
+                    CategoryLogger.always().info("Unable to create conflict between lanes " + lanes.get(i).getFullId() + " and "
+                            + lanes.get(j).getFullId() + ". Reattempting at width " + width + ".");
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns all the lanes in the network.
+     * @param network RoadNetwork; network.
+     * @return List&lt;Lane&gt;; list if all lanes.
+     */
+    private static List<Lane> getLanes(final RoadNetwork network)
+    {
+        ImmutableMap<String, Link> links = network.getLinkMap();
+        List<Lane> lanes = new ArrayList<>();
+        for (String linkId : links.keySet())
+        {
+            Link link = links.get(linkId);
+            if (link instanceof CrossSectionLink)
+            {
+                for (CrossSectionElement element : ((CrossSectionLink) link).getCrossSectionElementList())
+                {
+                    if (element instanceof Lane lane && !(element instanceof Shoulder))
+                    {
+                        lanes.add(lane);
+                    }
+                }
+            }
+        }
+        return lanes;
     }
 
     /**
