@@ -163,138 +163,266 @@ public final class ExternalSimEmulator
             {
                 byte[] encodedMessage;
 
-                Set<Integer> awaiting = new LinkedHashSet<>();
-                int msgId = this.messageId++;
-                awaiting.add(msgId);
-                String jsonOd = Files.readString(getPath(demoNetwork, "/od/OdMatrix.json", odFile));
-                encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS, "ODMATRIX", msgId,
-                        new Object[] {jsonOd});
-                this.responder.send(encodedMessage, ZMQ.DONTWAIT);
-                CategoryLogger.always().debug("ExternalSim sent ODMATRIX message");
-
-                msgId = this.messageId++;
-                awaiting.add(msgId);
-                String jsonRoutes = Files.readString(getPath(demoNetwork, "/route/Routes.json", routeFile));
-                encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS, "ROUTES", msgId,
-                        new Object[] {jsonRoutes});
-                this.responder.send(encodedMessage, ZMQ.DONTWAIT);
-                CategoryLogger.always().debug("ExternalSim sent ROUTES message");
-
-                msgId = this.messageId++;
-                awaiting.add(msgId);
-                Object[] networkPayload =
-                        demoNetwork ? new Object[] {} : new Object[] {Files.readString(getPath(false, "N/A", networkFile))};
-                encodedMessage =
-                        Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS, "NETWORK", msgId, networkPayload);
-                this.responder.send(encodedMessage, ZMQ.DONTWAIT);
-                CategoryLogger.always().debug("ExternalSim sent NETWORK message");
-
-                Speed gtuSpeed = new Speed(50, SpeedUnit.KM_PER_HOUR);
-                Length startX1 = Length.instantiateSI(40.0);
-                Length startY1 = Length.instantiateSI(5.25);
-                Length startX2 = Length.instantiateSI(30.0);
-                Length startY2 = Length.instantiateSI(5.25);
-                setupVehicles(awaiting, gtuSpeed, startX1, startY1, startX2, startY2);
-
-                Long start = null;
-                // reset, stop, terminate, command (lane change), vehicle (during sim), active mode
-                long[] events = new long[] {30000, 40000, 45000, 10000, 500, 5000};
-                while (!Thread.currentThread().isInterrupted())
+                if (networkFile.contains("crossroad_bike"))
                 {
-                    // Wait for next message from the server
-                    byte[] request = this.responder.recv(ZMQ.DONTWAIT);
-                    while (request == null)
-                    {
-                        // Hard-coded reset, stop, terminate
-                        if (externalEvents(awaiting, start, events))
-                        {
-                            break;
-                        }
-                        try
-                        {
-                            // In order to allow resources to go to other processes, we sleep before checking again
-                            Thread.sleep(3);
-                        }
-                        catch (InterruptedException e)
-                        {
+                    // Test for bike scenario
 
-                        }
-                        request = this.responder.recv(ZMQ.DONTWAIT);
-                    }
-                    if (request == null)
-                    {
-                        break; // terminate performed break in message receiving while loop
-                    }
+                    Set<Integer> awaiting = new LinkedHashSet<>();
 
-                    Sim0MQMessage message = Sim0MQMessage.decode(request);
-                    if ("PLAN".equals(message.getMessageTypeId()))
-                    {
-                        // String id
-                        Object[] payload = message.createObjectArray();
-                        String id = (String) payload[8];
-                        CategoryLogger.always().debug("ExternalSim received PLAN message for GTU " + id);
-                    }
-                    else if ("DELETE".equals(message.getMessageTypeId()))
-                    {
-                        // String id
-                        Object[] payload = message.createObjectArray();
-                        String id = (String) payload[8];
-                        TrajectorySender ts = this.trajectorySenders.remove(id);
-                        if (ts != null)
-                        {
-                            ts.terminate();
-                        }
-                        CategoryLogger.always().debug("ExternalSim received DELETE message for GTU " + id);
-                    }
-                    else if ("READY".equals(message.getMessageTypeId()))
-                    {
-                        msgId = (int) message.createObjectArray()[8];
-                        awaiting.remove(msgId);
-                        CategoryLogger.always().debug("ExternalSim received READY message");
-                        if (awaiting.isEmpty())
-                        {
-                            if (start == null)
+                    // Routes
+                    int msgId = this.messageId++;
+                    awaiting.add(msgId);
+                    String jsonRoutes = """
                             {
-                                // Trajectory senders
-                                TrajectorySender ts1 = new TrajectorySender("Ego 1", EXTERNAL_FREQUENCY, startX1, startY1,
-                                        gtuSpeed, Acceleration.instantiateSI(0.5), Duration.instantiateSI(5.0), null);
-                                TrajectorySender ts2 = new TrajectorySender("Ego 2", EXTERNAL_FREQUENCY, startX2, startY2,
-                                        gtuSpeed, Acceleration.instantiateSI(-0.5), Duration.instantiateSI(3.0),
-                                        Duration.instantiateSI(5.0));
-                                this.trajectorySenders.put("Ego 1", ts1);
-                                this.trajectorySenders.put("Ego 2", ts2);
+                                "routes": [
+                                    {
+                                        "id": "carRoute",
+                                        "objects": ["0", "8", "2"]
+                                    },
+                                    {
+                                        "id": "bikeRoute",
+                                        "objects": ["3"]
+                                    }
+                                ]
                             }
+                            """;
+                    encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS, "ROUTES", msgId,
+                            new Object[] {jsonRoutes});
+                    this.responder.send(encodedMessage, ZMQ.DONTWAIT);
+                    CategoryLogger.always().debug("ExternalSim sent ROUTES message");
 
-                            // Start simulation
-                            String messageType;
-                            if (realTime)
+                    // Network
+                    Object[] networkPayload =
+                            new Object[] {Files.readString(Paths.get(getClass().getResource(networkFile).toURI()))};
+                    msgId = this.messageId++;
+                    encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS, "NETWORK", msgId,
+                            networkPayload);
+                    this.responder.send(encodedMessage, ZMQ.DONTWAIT);
+                    CategoryLogger.always().debug("ExternalSim sent NETWORK messgae");
+
+                    // Car
+                    Length length = Length.instantiateSI(4.0);
+                    Length width = Length.instantiateSI(1.9);
+                    Length refToNose = Length.instantiateSI(3.0);
+                    Speed speed = new Speed(50.0, SpeedUnit.KM_PER_HOUR);
+                    Object[] payload = new Object[] {"Car", "Ots", Length.instantiateSI(-170.0), Length.instantiateSI(518.0),
+                            Direction.ZERO, speed, "CAR", length, width, refToNose, 0, "carRoute"};
+                    msgId = this.messageId++;
+                    awaiting.add(msgId);
+                    this.responder.send(
+                            Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, OTS, EXTERNAL_SIM, "VEHICLE", msgId, payload),
+                            ZMQ.DONTWAIT);
+                    CategoryLogger.always().debug("ExternalSim sent VEHICLE message for Car");
+
+                    // Bike
+                    length = Length.instantiateSI(1.8);
+                    width = Length.instantiateSI(0.5);
+                    refToNose = Length.instantiateSI(0.9);
+                    speed = new Speed(15.0, SpeedUnit.KM_PER_HOUR);
+                    payload = new Object[] {"Bike", "Ots", Length.instantiateSI(-50.0), Length.instantiateSI(515.0),
+                            Direction.ZERO, speed, "CAR", length, width, refToNose, 1, "fSpeed", 0.3, "bikeRoute"};
+                    msgId = this.messageId++;
+                    awaiting.add(msgId);
+                    this.responder.send(
+                            Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, OTS, EXTERNAL_SIM, "VEHICLE", msgId, payload),
+                            ZMQ.DONTWAIT);
+                    CategoryLogger.always().debug("ExternalSim sent VEHICLE message for Bike");
+
+                    Long start = null;
+                    while (!Thread.currentThread().isInterrupted())
+                    {
+                        // Wait for next message from the server
+                        byte[] request = this.responder.recv(ZMQ.DONTWAIT);
+                        while (request == null)
+                        {
+                            try
                             {
+                                // In order to allow resources to go to other processes, we sleep before checking again
+                                Thread.sleep(3);
+                            }
+                            catch (InterruptedException e)
+                            {
+
+                            }
+                            if (start != null && System.currentTimeMillis() - start > 30000)
+                            {
+                                break;
+                            }
+                            request = this.responder.recv(ZMQ.DONTWAIT);
+                        }
+                        if (request == null)
+                        {
+                            break; // terminate performed break in message receiving while loop
+                        }
+
+                        Sim0MQMessage message = Sim0MQMessage.decode(request);
+                        if ("PLAN".equals(message.getMessageTypeId()))
+                        {
+                            // String id
+                            payload = message.createObjectArray();
+                            String id = (String) payload[8];
+                            CategoryLogger.always().debug("ExternalSim received PLAN message for GTU " + id);
+                        }
+                        else if ("READY".equals(message.getMessageTypeId()))
+                        {
+                            msgId = (int) message.createObjectArray()[8];
+                            awaiting.remove(msgId);
+                            CategoryLogger.always().debug("ExternalSim received READY message");
+                            if (awaiting.isEmpty())
+                            {
+                                // Start simulation
                                 encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS, "START",
                                         this.messageId++, new Object[] {});
-                                messageType = "START";
-                            }
-                            else
-                            {
-                                Duration until = this.step.times(++this.stepNumber);
-                                if (until.si > 60.0)
+                                this.responder.send(encodedMessage, 0);
+                                CategoryLogger.always().debug("ExternalSim sent START message");
+                                if (start == null)
                                 {
-                                    break;
+                                    start = System.currentTimeMillis();
                                 }
-                                encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS, "PROGRESS",
-                                        this.messageId++, new Object[] {until});
-                                messageType = "PROGRESS";
                             }
-                            this.responder.send(encodedMessage, 0);
+                        }
 
-                            if (start == null)
+                    }
+                    System.out.println("Simulation ended");
+
+                }
+                else
+                {
+                    // Mixture of other tests on straight road
+
+                    Set<Integer> awaiting = new LinkedHashSet<>();
+                    int msgId = this.messageId++;
+                    awaiting.add(msgId);
+                    String jsonOd = Files.readString(getPath(demoNetwork, "/od/OdMatrix.json", odFile));
+                    encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS, "ODMATRIX", msgId,
+                            new Object[] {jsonOd});
+                    this.responder.send(encodedMessage, ZMQ.DONTWAIT);
+                    CategoryLogger.always().debug("ExternalSim sent ODMATRIX message");
+
+                    msgId = this.messageId++;
+                    awaiting.add(msgId);
+                    String jsonRoutes = Files.readString(getPath(demoNetwork, "/route/Routes.json", routeFile));
+                    encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS, "ROUTES", msgId,
+                            new Object[] {jsonRoutes});
+                    this.responder.send(encodedMessage, ZMQ.DONTWAIT);
+                    CategoryLogger.always().debug("ExternalSim sent ROUTES message");
+
+                    msgId = this.messageId++;
+                    awaiting.add(msgId);
+                    Object[] networkPayload =
+                            demoNetwork ? new Object[] {} : new Object[] {Files.readString(getPath(false, "N/A", networkFile))};
+                    encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS, "NETWORK", msgId,
+                            networkPayload);
+                    this.responder.send(encodedMessage, ZMQ.DONTWAIT);
+                    CategoryLogger.always().debug("ExternalSim sent NETWORK message");
+
+                    Speed gtuSpeed = new Speed(50, SpeedUnit.KM_PER_HOUR);
+                    Length startX1 = Length.instantiateSI(40.0);
+                    Length startY1 = Length.instantiateSI(5.25);
+                    Length startX2 = Length.instantiateSI(30.0);
+                    Length startY2 = Length.instantiateSI(5.25);
+                    setupVehicles(awaiting, gtuSpeed, startX1, startY1, startX2, startY2);
+
+                    Long start = null;
+                    // reset, stop, terminate, command (lane change), vehicle (during sim), active mode
+                    long[] events = new long[] {30000, 40000, 45000, 10000, 500, 5000};
+                    while (!Thread.currentThread().isInterrupted())
+                    {
+                        // Wait for next message from the server
+                        byte[] request = this.responder.recv(ZMQ.DONTWAIT);
+                        while (request == null)
+                        {
+                            // Hard-coded reset, stop, terminate
+                            if (externalEvents(awaiting, start, events))
                             {
-                                this.trajectorySenders.values().forEach((ts) -> ts.start());
+                                break;
                             }
-
-                            CategoryLogger.always().debug("ExternalSim sent {} message", messageType);
-                            if (start == null)
+                            try
                             {
-                                start = System.currentTimeMillis(); // only first time, this is for reset/stop/terminate
+                                // In order to allow resources to go to other processes, we sleep before checking again
+                                Thread.sleep(3);
+                            }
+                            catch (InterruptedException e)
+                            {
+
+                            }
+                            request = this.responder.recv(ZMQ.DONTWAIT);
+                        }
+                        if (request == null)
+                        {
+                            break; // terminate performed break in message receiving while loop
+                        }
+
+                        Sim0MQMessage message = Sim0MQMessage.decode(request);
+                        if ("PLAN".equals(message.getMessageTypeId()))
+                        {
+                            // String id
+                            Object[] payload = message.createObjectArray();
+                            String id = (String) payload[8];
+                            CategoryLogger.always().debug("ExternalSim received PLAN message for GTU " + id);
+                        }
+                        else if ("DELETE".equals(message.getMessageTypeId()))
+                        {
+                            // String id
+                            Object[] payload = message.createObjectArray();
+                            String id = (String) payload[8];
+                            TrajectorySender ts = this.trajectorySenders.remove(id);
+                            if (ts != null)
+                            {
+                                ts.terminate();
+                            }
+                            CategoryLogger.always().debug("ExternalSim received DELETE message for GTU " + id);
+                        }
+                        else if ("READY".equals(message.getMessageTypeId()))
+                        {
+                            msgId = (int) message.createObjectArray()[8];
+                            awaiting.remove(msgId);
+                            CategoryLogger.always().debug("ExternalSim received READY message");
+                            if (awaiting.isEmpty())
+                            {
+                                if (start == null)
+                                {
+                                    // Trajectory senders
+                                    TrajectorySender ts1 = new TrajectorySender("Ego 1", EXTERNAL_FREQUENCY, startX1, startY1,
+                                            gtuSpeed, Acceleration.instantiateSI(0.5), Duration.instantiateSI(5.0), null);
+                                    TrajectorySender ts2 = new TrajectorySender("Ego 2", EXTERNAL_FREQUENCY, startX2, startY2,
+                                            gtuSpeed, Acceleration.instantiateSI(-0.5), Duration.instantiateSI(3.0),
+                                            Duration.instantiateSI(5.0));
+                                    this.trajectorySenders.put("Ego 1", ts1);
+                                    this.trajectorySenders.put("Ego 2", ts2);
+                                }
+
+                                // Start simulation
+                                String messageType;
+                                if (realTime)
+                                {
+                                    encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS,
+                                            "START", this.messageId++, new Object[] {});
+                                    messageType = "START";
+                                }
+                                else
+                                {
+                                    Duration until = this.step.times(++this.stepNumber);
+                                    if (until.si > 60.0)
+                                    {
+                                        break;
+                                    }
+                                    encodedMessage = Sim0MQMessage.encodeUTF8(BIG_ENDIAN, FEDERATION, EXTERNAL_SIM, OTS,
+                                            "PROGRESS", this.messageId++, new Object[] {until});
+                                    messageType = "PROGRESS";
+                                }
+                                this.responder.send(encodedMessage, 0);
+
+                                if (start == null)
+                                {
+                                    this.trajectorySenders.values().forEach((ts) -> ts.start());
+                                }
+
+                                CategoryLogger.always().debug("ExternalSim sent {} message", messageType);
+                                if (start == null)
+                                {
+                                    start = System.currentTimeMillis(); // only first time, this is for reset/stop/terminate
+                                }
                             }
                         }
                     }
