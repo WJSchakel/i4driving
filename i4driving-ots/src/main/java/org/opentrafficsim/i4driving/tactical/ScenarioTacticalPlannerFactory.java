@@ -501,7 +501,7 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
         tacticalPlanner.addVoluntaryIncentive(new IncentiveSpeedWithCourtesy());
         tacticalPlanner.addVoluntaryIncentive(new IncentiveKeep());
         tacticalPlanner.addAccelerationIncentive(new AccelerationConflictsTmp());
-        if (this.activeMode && FullerImplementation.ATTENTION_MATRIX.equals(this.fullerImplementation))
+        if (this.activeMode)
         {
             tacticalPlanner.addAccelerationIncentive(new AccelerationActiveModeCrossing());
         }
@@ -626,6 +626,10 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
         {
             perception.addPerceptionCategory(new LocalDistractionPerception(perception));
         }
+        if (this.activeMode)
+        {
+            perception.addPerceptionCategory(new ActiveModePerception(perception));
+        }
         if (FullerImplementation.NONE.equals(this.fullerImplementation))
         {
             perception.addPerceptionCategory(new DirectNeighborsPerception(perception, HeadwayGtuType.WRAP));
@@ -633,10 +637,6 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
         }
         else if (FullerImplementation.ATTENTION_MATRIX.equals(this.fullerImplementation))
         {
-            if (this.activeMode)
-            {
-                perception.addPerceptionCategory(new ActiveModePerception(perception));
-            }
             perception.addPerceptionCategory(
                     new NeighborsPerceptionChannel(perception, estimationNeighbors, anticipationNeighbors));
             perception.addPerceptionCategory(
