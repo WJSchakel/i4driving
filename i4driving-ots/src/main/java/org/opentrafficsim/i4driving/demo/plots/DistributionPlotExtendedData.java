@@ -85,8 +85,9 @@ public class DistributionPlotExtendedData extends AbstractPlot implements Interv
     private JFreeChart createChart(final String xLabel)
     {
         NumberAxis xAxis = new NumberAxis(xLabel);
-        xAxis.setFixedAutoRange(this.x[this.x.length - 1] - this.x[0]);
+        xAxis.setRange(this.x[0], this.x[this.x.length - 1]);
         NumberAxis yAxis = new NumberAxis("Count [-]");
+        yAxis.setAutoRangeIncludesZero(true);
         XYBarRenderer renderer = new XYBarRenderer();
         XYPlot plot = new XYPlot(this, xAxis, yAxis, renderer);
         return new JFreeChart(getCaption(), JFreeChart.DEFAULT_TITLE_FONT, plot, false);
