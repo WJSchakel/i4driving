@@ -28,6 +28,9 @@ public class IdmModified extends AbstractCarFollowingModel
 
     /** Maximum comfortable car-following deceleration. */
     private static final ParameterTypeAcceleration B = ParameterTypes.B;
+    
+    /** Maximum adjustment deceleration, e.g. when speed limit drops. */
+    private static final ParameterTypeAcceleration B0 = ParameterTypes.B0;
 
     /** Critical speed. */
     private static final ParameterTypeSpeed VC = new ParameterTypeSpeed("v_c", "Critical speed in IDM",
@@ -63,10 +66,11 @@ public class IdmModified extends AbstractCarFollowingModel
         double vRat = v / desiredSpeed.si;
         double a = parameters.getParameter(A).si;
         double b = parameters.getParameter(B).si;
+        Acceleration b0 = parameters.getParameter(B0);
 
         if (leaders.isEmpty())
         {
-            return Acceleration.instantiateSI(a * (1.0 - (vRat * vRat * vRat * vRat)));
+            return Acceleration.max(Acceleration.instantiateSI(a * (1.0 - (vRat * vRat * vRat * vRat))), b0.neg());
         }
 
         Headway leader = leaders.first();
