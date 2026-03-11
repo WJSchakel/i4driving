@@ -361,11 +361,11 @@ public class ScenarioTacticalPlannerFactory implements LaneBasedTacticalPlannerF
         parameters.setDefaultParameter(ParameterTypes.LOOKAHEAD);
         parameters.setDefaultParameter(ParameterTypes.VCONG);
         parameters.setDefaultParameter(ParameterTypes.LCDUR);
+        parameters.setParameter(ParameterTypes.TR, Duration.ZERO);
+        parameters.setParameter(ChannelFuller.EST_FACTOR, 1.0);
         if (!this.fullerImplementation.equals(FullerImplementation.NONE))
         {
-            parameters.setParameter(ParameterTypes.TR, Duration.ZERO);
             parameters.setDefaultParameter(AdaptationSituationalAwareness.TR_MAX);
-            parameters.setParameter(ChannelFuller.EST_FACTOR, 1.0);
             parameters.setParameter(Estimation.OVER_EST, this.stream.nextDouble() <= this.fractionOverEstimation ? 1.0 : -1.0);
             parameters.setDefaultParameter(ChannelTaskScan.TDSCAN);
             if (this.headwayAdaptation)
