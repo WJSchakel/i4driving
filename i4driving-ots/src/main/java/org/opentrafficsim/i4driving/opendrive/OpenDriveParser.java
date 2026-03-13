@@ -719,13 +719,13 @@ public final class OpenDriveParser
         if ((mark != null && mark.getRoadMarkType() != null) || solidWhenNull)
         {
             Stripe.Type type = mark != null && mark.getRoadMarkType() != null ? mark.getRoadMarkType() : Stripe.Type.SOLID;
-            double w = mark != null && mark.getWidth() != null ? mark.getWidth() : 0.3;
+            double w = mark != null && mark.getWidth() != null ? mark.getWidth() : 0.2;
             if (w == 0.0)
             {
                 return;
             }
-            FractionalLengthData prevOffset = OffsetData.add(centerOffsetData, FractionalLengthData.of(0.0, -w));
-            FractionalLengthData nextOffset = OffsetData.add(centerOffsetData, FractionalLengthData.of(0.0, w));
+            FractionalLengthData prevOffset = OffsetData.add(centerOffsetData, FractionalLengthData.of(0.0, -w * .5));
+            FractionalLengthData nextOffset = OffsetData.add(centerOffsetData, FractionalLengthData.of(0.0, w * .5));
             PolyLine2d prevLine = forward ? linkDesignLine.flattenOffset(prevOffset, FLATTENER)
                     : linkDesignLine.flattenOffset(prevOffset, FLATTENER).reverse();
             PolyLine2d nextLine = forward ? linkDesignLine.flattenOffset(nextOffset, FLATTENER)
