@@ -12,4 +12,4 @@ a) It is NECESSARY that all the python scripts are located inside a CARLA folder
 
 b) The location of the CARLA map needs to be set in line 117 of the aimsun_eai_controller.py
 
-c) Explore the script to see all settings that you can define for this experiment. Contact me if there are any questions on alkis.papadoulis@aimsun.com
+c) Explore the script to see all settings that you can define for this experiment. Contact me if there are any questions on athina.tympakianaki@aimsun.com
